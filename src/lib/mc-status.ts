@@ -3,6 +3,6 @@ export interface MinecraftStatus {
     players: {
         online: number;
         max: number;
-        list: { name: string }[];
+        list?: { name: string }[];
     };
 }

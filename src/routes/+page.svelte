@@ -217,7 +217,7 @@
                 (Players: {mcStatus.players.online} / {mcStatus.players.max})
             {/if}
         </p>
-        {#if mcStatus.players.list.length > 0}
+        {#if mcStatus.players.list != null && mcStatus.players.list.length > 0}
             Online Players:
             <ul>
                 {#each mcStatus.players.list as player}
