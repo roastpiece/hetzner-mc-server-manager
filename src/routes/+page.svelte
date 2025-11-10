@@ -216,7 +216,15 @@
             {#if mcStatus.online}
                 (Players: {mcStatus.players.online} / {mcStatus.players.max})
             {/if}
+            Online Players:
         </p>
+        {#if mcStatus.players.list.length > 0}
+            <ul>
+                {#each mcStatus.players.list as player}
+                    <li>{player.name}</li>
+                {/each}
+            </ul>
+        {/if}
     {/if}
     {#if serverStatus.state === 'deleted'}
         <p>The server has been deleted. You can start it again, which will recreate it from the latest snapshot.</p>
