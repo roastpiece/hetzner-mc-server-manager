@@ -4,6 +4,8 @@ import * as Hetzner from "./hetzner.js";
 export async function next(): Promise<State.State> {
     const { state, serverId } = await State.getState();
 
+    console.log("Current state:", state, "Server ID:", serverId);
+
     switch (state) {
         case "running":
             // do nothing

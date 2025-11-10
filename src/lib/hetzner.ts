@@ -173,6 +173,8 @@ export async function getSnapshotForServer(
     const data = await response.json();
     const images = data.images as HetznerImage[];
 
+    console.log("Fetched snapshots for server:", serverId, images);
+
     return images.length > 0 ? images[0] : null;
 }
 

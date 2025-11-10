@@ -89,6 +89,8 @@ async function startServer(): Promise<void> {
 export async function createSnapshot(serverId: number): Promise<void> {
     const existingSnapshot = await Hetzner.getSnapshotForServer(serverId);
 
+    console.log("Existing snapshot for server:", serverId, existingSnapshot);
+
     if (existingSnapshot != null) {
         return; // Snapshot already exists, do nothing
     }
