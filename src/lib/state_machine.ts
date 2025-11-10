@@ -16,7 +16,7 @@ export async function next(): Promise<State.State> {
             break;
 
         case "stopped":
-            State.createSnapshot(serverId!);
+            await State.createSnapshot(serverId!);
             break;
 
         case "snapshot-creating":
@@ -24,7 +24,7 @@ export async function next(): Promise<State.State> {
             break;
 
         case "snapshot-created":
-            Hetzner.deleteServer(serverId!);
+            await Hetzner.deleteServer(serverId!);
             break;
 
         case "deleting":
