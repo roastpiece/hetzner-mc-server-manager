@@ -155,6 +155,9 @@
             case "snapshot-created":
             case "deleting":
             case "stopped":
+            case "creating":
+            case "created":
+            case "upgraded":
                 startWaitForServerDeleted();
                 break;
         }

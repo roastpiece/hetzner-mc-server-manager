@@ -41,9 +41,11 @@ export interface HetznerServer {
             ip: string;
         };
     };
-    labels: Record<string, string>;
+    labels: Partial<Record<Label, string>>;
     server_type: HetznerServerType;
 }
+
+export type Label = "managed-by" | "target-state" | "target-size" | "action";
 
 export type HetznerServerStatus =
     | "running"
@@ -209,6 +211,26 @@ export async function createServer(
     ipv4id: number,
     serverSize: HetznerServerSize,
 ): Promise<HetznerServer> {
+    const request = {
+        name: serverName,
+        server_type: "ccx13",
+        image: imageId,
+        location: HETZNER_REGION,
+        start_after_create: false,
+        labels: {
+            "managed-by": "hetzner-mc-server-manager",
+            "target-state": "running",
+            "target-size": serverSize,
+        } satisfies Partial<Record<Label, string>>,
+        ssh_keys: [HETZNER_SSH_KEY_ID],
+        public_net: {
+            enable_ipv4: true,
+            enable_ipv6: false,
+            ipv4: ipv4id,
+        },
+    };
+
+    console.log("Creating server with request:", request);
     const response = await fetch(`${apiBaseUrl}/servers`, {
         ...baseInit,
         method: "POST",
@@ -216,25 +238,11 @@ export async function createServer(
             ...baseInit.headers,
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-            name: serverName,
-            server_type: serverSize,
-            image: imageId,
-            location: HETZNER_REGION,
-            labels: {
-                "managed-by": "hetzner-mc-server-manager",
-                "target-state": "running",
-            },
-            ssh_keys: [HETZNER_SSH_KEY_ID],
-            public_net: {
-                enable_ipv4: true,
-                enable_ipv6: false,
-                ipv4: ipv4id,
-            },
-        }),
+        body: JSON.stringify(request),
     });
 
     if (!response.ok) {
+        console.error("Failed to create server:", await response.text());
         throw new Error(
             `Failed to create server: ${response.status} ${response.statusText}`,
         );
@@ -270,7 +278,7 @@ export interface HetznerPrimaryIp {
 
 export async function setServerLabels(
     serverId: number,
-    labels: Record<string, string>,
+    labels: Partial<Record<Label, string>>,
 ): Promise<void> {
     const response = await fetch(`${apiBaseUrl}/servers/${serverId}`, {
         ...baseInit,
@@ -290,6 +298,30 @@ export async function setServerLabels(
     if (!response.ok) {
         throw new Error(
             `Failed to set server labels: ${response.status} ${response.statusText}`,
+        );
+    }
+}
+
+export async function upgradeServer(serverId: number, targetSize: string) {
+    const response = await fetch(
+        `${apiBaseUrl}/servers/${serverId}/actions/change_type`,
+        {
+            ...baseInit,
+            method: "POST",
+            headers: {
+                ...baseInit.headers,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                server_type: targetSize,
+                upgrade_disk: false,
+            }),
+        },
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to upgrade server: ${response.status} ${response.statusText}`,
         );
     }
 }

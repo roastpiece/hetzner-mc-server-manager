@@ -5,7 +5,7 @@ export async function next(): Promise<{
     state: State.State;
     size?: State.ServerSize;
 }> {
-    const { state, serverId, size } = await State.getState();
+    const { state, serverId, size, server } = await State.getState();
 
     switch (state) {
         case "running":
@@ -34,6 +34,27 @@ export async function next(): Promise<{
 
         case "deleted":
             // do nothing
+            break;
+
+        case "creating":
+            break;
+        case "created":
+            if (server == null)
+                throw new Error("Server is null in created state");
+
+            if (
+                server.labels["target-size"] != null &&
+                server.labels["target-size"] !== server.server_type.name
+            ) {
+                await Hetzner.upgradeServer(
+                    serverId!,
+                    server.labels["target-size"],
+                );
+            }
+            break;
+
+        case "upgraded":
+            await Hetzner.startServer(serverId!);
             break;
 
         case "starting":

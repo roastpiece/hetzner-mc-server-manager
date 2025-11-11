@@ -2,14 +2,17 @@ import type { HetznerServerSize } from "./hetzner.js";
 import * as Hetzner from "./hetzner.js";
 
 export type State =
-    | "running"
-    | "stopping"
-    | "stopped"
-    | "snapshot-creating"
-    | "snapshot-created"
-    | "deleting"
-    | "deleted"
-    | "starting"
+    | "running" // server is running, can be stopped
+    | "stopping" // server is stopping, wait until stopped
+    | "stopped" // server is stopped, can create snapshot
+    | "snapshot-creating" // snapshot is being created, wait until created
+    | "snapshot-created" // snapshot created, can delete server
+    | "deleting" // server is being deleted, wait until deleted
+    | "deleted" // server is deleted, can be started
+    | "creating" // server is being created
+    | "created" // server created, can be upgraded if needed
+    | "upgraded" // server upgraded, can be started
+    | "starting" // server is starting
     | "unknown";
 
 export type ServerSize = "pp" | "mid" | "yomama" | "unknown";
@@ -18,6 +21,7 @@ export async function getState(): Promise<{
     state: State;
     serverId?: number;
     size?: ServerSize;
+    server?: Hetzner.HetznerServer;
 }> {
     const server = await findServer();
     let state: State = "unknown";
@@ -37,9 +41,15 @@ export async function getState(): Promise<{
             break;
 
         case "off":
-            if (server.labels["target-state"] === "deleted")
+            if (server.labels["target-state"] === "deleted") {
                 state = await getSnapshotState(server.id);
-            else state = "starting";
+            } else if (
+                server.labels["target-size"] !== server.server_type.name
+            ) {
+                state = "created";
+            } else {
+                state = "upgraded";
+            }
             break;
 
         case "deleting":
@@ -48,14 +58,22 @@ export async function getState(): Promise<{
 
         case "starting":
         case "initializing":
-            state = "starting";
+            if (server.labels["target-size"] !== server.server_type.name) {
+                state = "creating";
+            } else {
+                state = "starting";
+            }
             break;
     }
 
     return {
         state,
         serverId: server.id,
-        size: fromHetznerServerSize(server.server_type.name),
+        size: fromHetznerServerSize(
+            (server.labels["target-size"] as HetznerServerSize) ??
+                server.server_type.name,
+        ),
+        server,
     };
 }
 
@@ -114,6 +132,8 @@ async function startServer(serverSize: ServerSize): Promise<void> {
             ? current
             : latest;
     });
+
+    console.log("Starting server from snapshot:", latestSnapshot);
 
     const primaryIps = await Hetzner.getPrimaryIps();
     if (primaryIps.length === 0) {

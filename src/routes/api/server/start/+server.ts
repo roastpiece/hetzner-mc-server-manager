@@ -23,9 +23,9 @@ export const POST: RequestHandler = async (event) => {
     try {
         await try_start(serverSize);
     } catch (error) {
-        return new Response(null, {
+        console.error("Error starting server:", error);
+        return new Response(JSON.stringify(error), {
             status: 412,
-            statusText: (error as Error).message,
         });
     }
 
