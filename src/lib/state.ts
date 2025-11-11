@@ -33,7 +33,11 @@ export async function getState(): Promise<{
 
     switch (server.status) {
         case "running":
-            state = "running";
+            if (server.labels["target-state"] === "deleted") {
+                state = "stopping";
+            } else {
+                state = "running";
+            }
             break;
 
         case "stopping":
