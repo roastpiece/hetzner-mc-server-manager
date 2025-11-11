@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { on } from "svelte/events";
     import type { Status } from "./api/status/+server";
     import { onMount } from "svelte";
     import type { MinecraftStatus } from "$lib/mc-status";
+    import type { ServerSize } from "$lib/state";
 
     let serverStatus = $state<Status>();
     let serverPollInterval: number|undefined = undefined;
@@ -13,6 +13,8 @@
 
     let errorText = $state<string|undefined>();
     let warnOnExit = false;
+    
+    let serverSize = $state<ServerSize>('pp');
     
     $effect(() => {
         if (serverStatus?.state === 'deleted' || serverStatus?.state === 'running') {
@@ -27,6 +29,12 @@
             startMcStatusPoll();
         } else {
             clearInterval(mcStatusPollInterval);
+        }
+    });
+    
+    $effect(() => {
+        if (serverStatus?.state !== 'deleted') {
+            serverSize = serverStatus?.size ?? 'pp';
         }
     });
 
@@ -62,6 +70,9 @@
 
         const res = await fetch('/api/server/start', {
             method: 'POST',
+            body: JSON.stringify({
+                size: serverSize,
+            }),
         });
         if (!res.ok) {
             const errorText = await res.text();
@@ -155,7 +166,6 @@
             event.returnValue = '';
           }
         });
-
     });
 </script>
 
@@ -213,11 +223,11 @@
     {#if mcStatus != undefined}
         <p>
             Minecraft server state: {mcStatus.online ? 'Online' : 'Offline'}
-            {#if mcStatus.online}
+            {#if mcStatus.online && mcStatus.players != null}
                 (Players: {mcStatus.players.online} / {mcStatus.players.max})
             {/if}
         </p>
-        {#if mcStatus.players.list != null && mcStatus.players.list.length > 0}
+        {#if mcStatus.players?.list != null && mcStatus.players.list.length > 0}
             Online Players:
             <ul>
                 {#each mcStatus.players.list as player}
@@ -230,9 +240,20 @@
         <p>The server has been deleted. You can start it again, which will recreate it from the latest snapshot.</p>
     {/if}
 
-
-    <button onclick={stopServer} disabled={!serverStatus.canStop} title="Stop the server">Get that shit outta here</button>
-    <button onclick={startServer} disabled={!serverStatus.canStart} title="Start the server">Open the hole</button>
+    <hr>
+    <div>
+        <button onclick={stopServer} disabled={!serverStatus.canStop} title="Stop the server">Get that shit outta here</button>
+    </div>
+    <hr>
+    <div>
+        <span>Server size</span>
+        <select bind:value={serverSize} disabled={!serverStatus.canStart}>
+            <option value="pp">Like your pp</option>
+            <option value="mid">Pretty mid</option>
+            <option value="yomama">Bigger than yo mamma</option>
+        </select>
+        <button onclick={startServer} disabled={!serverStatus.canStart} title="Start the server">Open the hole</button>
+    </div>
     
     {#if serverStatus.state === "running"}
         <button onclick={forceRestart}>Force restart minecraft instance</button>

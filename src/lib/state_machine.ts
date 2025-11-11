@@ -1,10 +1,11 @@
 import * as State from "./state.js";
 import * as Hetzner from "./hetzner.js";
 
-export async function next(): Promise<State.State> {
-    const { state, serverId } = await State.getState();
-
-    console.log("Current state:", state, "Server ID:", serverId);
+export async function next(): Promise<{
+    state: State.State;
+    size?: State.ServerSize;
+}> {
+    const { state, serverId, size } = await State.getState();
 
     switch (state) {
         case "running":
@@ -43,5 +44,5 @@ export async function next(): Promise<State.State> {
             break;
     }
 
-    return state;
+    return { state, size };
 }

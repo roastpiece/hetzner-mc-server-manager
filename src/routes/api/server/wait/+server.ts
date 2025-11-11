@@ -11,8 +11,9 @@ export const GET: RequestHandler = async () => {
             canStop: false,
         };
 
-        const state = await next();
+        const { state, size } = await next();
         status.state = state;
+        status.size = size;
 
         if (state === "running") {
             status.running = true;

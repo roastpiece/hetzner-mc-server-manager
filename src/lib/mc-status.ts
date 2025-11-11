@@ -1,6 +1,6 @@
 export interface MinecraftStatus {
     online: boolean;
-    players: {
+    players?: {
         online: number;
         max: number;
         list?: { name: string }[];

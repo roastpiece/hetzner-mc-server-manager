@@ -1,6 +1,5 @@
 import {
     HETZNER_REGION,
-    HETZNER_SERVER_TYPE,
     HETZNER_SSH_KEY_ID,
     HETZNER_TOKEN,
 } from "$env/static/private";
@@ -43,6 +42,7 @@ export interface HetznerServer {
         };
     };
     labels: Record<string, string>;
+    server_type: HetznerServerType;
 }
 
 export type HetznerServerStatus =
@@ -55,6 +55,11 @@ export type HetznerServerStatus =
     | "migrating"
     | "rebuilding"
     | "unknown";
+
+export interface HetznerServerType {
+    name: HetznerServerSize;
+}
+export type HetznerServerSize = "ccx13" | "ccx23" | "ccx33";
 
 export async function startServer(serverId: number): Promise<void> {
     const response = await fetch(
@@ -74,7 +79,7 @@ export async function startServer(serverId: number): Promise<void> {
 
 export async function stopServer(serverId: number): Promise<void> {
     const response = await fetch(
-        `${apiBaseUrl}/servers/${serverId}/actions/poweroff`,
+        `${apiBaseUrl}/servers/${serverId}/actions/shutdown`,
         {
             ...baseInit,
             method: "POST",
@@ -173,8 +178,6 @@ export async function getSnapshotForServer(
     const data = await response.json();
     const images = data.images as HetznerImage[];
 
-    console.log("Fetched snapshots for server:", serverId, images);
-
     return images.length > 0 ? images[0] : null;
 }
 
@@ -204,6 +207,7 @@ export async function createServer(
     serverName: string,
     imageId: number,
     ipv4id: number,
+    serverSize: HetznerServerSize,
 ): Promise<HetznerServer> {
     const response = await fetch(`${apiBaseUrl}/servers`, {
         ...baseInit,
@@ -214,7 +218,7 @@ export async function createServer(
         },
         body: JSON.stringify({
             name: serverName,
-            server_type: HETZNER_SERVER_TYPE,
+            server_type: serverSize,
             image: imageId,
             location: HETZNER_REGION,
             labels: {

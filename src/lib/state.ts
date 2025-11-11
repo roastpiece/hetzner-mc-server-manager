@@ -1,3 +1,4 @@
+import type { HetznerServerSize } from "./hetzner.js";
 import * as Hetzner from "./hetzner.js";
 
 export type State =
@@ -11,7 +12,13 @@ export type State =
     | "starting"
     | "unknown";
 
-export async function getState(): Promise<{ state: State; serverId?: number }> {
+export type ServerSize = "pp" | "mid" | "yomama" | "unknown";
+
+export async function getState(): Promise<{
+    state: State;
+    serverId?: number;
+    size?: ServerSize;
+}> {
     const server = await findServer();
     let state: State = "unknown";
 
@@ -45,7 +52,38 @@ export async function getState(): Promise<{ state: State; serverId?: number }> {
             break;
     }
 
-    return { state, serverId: server.id };
+    return {
+        state,
+        serverId: server.id,
+        size: fromHetznerServerSize(server.server_type.name),
+    };
+}
+
+function fromHetznerServerSize(size: HetznerServerSize): ServerSize {
+    switch (size) {
+        case "ccx13":
+            return "pp";
+        case "ccx23":
+            return "mid";
+        case "ccx33":
+            return "yomama";
+        default:
+            console.warn(`Unknown Hetzner server size: ${size}`);
+            return "unknown";
+    }
+}
+
+function intoHetznerServerSize(size: ServerSize): HetznerServerSize {
+    switch (size) {
+        case "pp":
+            return "ccx13";
+        case "mid":
+            return "ccx23";
+        case "yomama":
+            return "ccx33";
+        default:
+            throw new Error(`Unknown server size: ${size}`);
+    }
 }
 
 async function getSnapshotState(serverId: number): Promise<State> {
@@ -65,7 +103,7 @@ async function getSnapshotState(serverId: number): Promise<State> {
     }
 }
 
-async function startServer(): Promise<void> {
+async function startServer(serverSize: ServerSize): Promise<void> {
     const snapshots = await Hetzner.listSnapshots();
     if (snapshots.length === 0) {
         throw new Error("No snapshots available to start the server from.");
@@ -83,13 +121,16 @@ async function startServer(): Promise<void> {
     }
     const primaryIp = primaryIps[0];
 
-    await Hetzner.createServer("mc-server", latestSnapshot.id, primaryIp.id);
+    await Hetzner.createServer(
+        "mc-server",
+        latestSnapshot.id,
+        primaryIp.id,
+        intoHetznerServerSize(serverSize),
+    );
 }
 
 export async function createSnapshot(serverId: number): Promise<void> {
     const existingSnapshot = await Hetzner.getSnapshotForServer(serverId);
-
-    console.log("Existing snapshot for server:", serverId, existingSnapshot);
 
     if (existingSnapshot != null) {
         return; // Snapshot already exists, do nothing
@@ -98,14 +139,14 @@ export async function createSnapshot(serverId: number): Promise<void> {
     await Hetzner.createSnapshot(serverId, `Snapshot for server ${serverId}`);
 }
 
-export async function try_start(): Promise<void> {
+export async function try_start(serverSize: ServerSize): Promise<void> {
     const { state } = await getState();
 
     if (state !== "deleted") {
         throw new Error(`Cannot start server from state: ${state}`);
     }
 
-    await startServer();
+    await startServer(serverSize);
 }
 
 export async function try_stop(): Promise<void> {

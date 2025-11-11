@@ -1,8 +1,9 @@
-import { getState, type State } from "$lib/state";
+import { getState, type ServerSize, type State } from "$lib/state";
 import type { RequestHandler } from "@sveltejs/kit";
 
 export interface Status {
     state: State;
+    size?: ServerSize;
     running: boolean;
     canStart: boolean;
     canStop: boolean;
@@ -15,8 +16,9 @@ export const GET: RequestHandler = async () => {
         canStart: false,
         canStop: false,
     };
-    const { state } = await getState();
+    const { state, size } = await getState();
     status.state = state;
+    status.size = size;
 
     if (state === "running") {
         status.running = true;
